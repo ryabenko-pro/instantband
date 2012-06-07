@@ -1,0 +1,65 @@
+<!HTML>
+<html>  
+  <head>  
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src="js/timer.js"></script>
+    <script type="text/javascript" src="js/timeline.js"></script>
+    <script type="text/javascript" src="js/webaudio/wa_context.js"></script>
+    <script type="text/javascript" src="js/webaudio/wa_note.js"></script>
+    <script type="text/javascript" src="js/note.js"></script>
+    <script type="text/javascript" src="js/dispatcher.js"></script>
+    <script type="text/javascript" src="js/instrument.js"></script>
+    <script type="text/javascript">
+    // <!--
+      var timer = new Timer();
+      timer.start();
+      
+      var dispatcher = null;
+      // Test
+      // timer.addService({serve: function() {console.log('1'); return true; return this.count = this.count ? this.count + 100 : 100}}, 1000);
+      window.onload = function() {
+        var timeline = new Timeline();
+        timeline.render(document.getElementById('container'));
+        
+        dispatcher = new Dispatcher(timeline);
+        dispatcher.render(document.getElementById('container'));
+        
+        var instrument = new Instrument(dispatcher);
+        dispatcher.setInstrument(instrument);
+        
+//        instrument.add('barrel', new Drum('sounds/drums/Big%20Drum%20Kick.mp3'), 67);
+//        instrument.add('hit', new Drum('sounds/drums/Clean%20Snare%20Hit.mp3'), 68);
+//        instrument.add('tom', new Drum('sounds/drums/808%20High%20Tom%202.mp3'), 69);
+//        instrument.add('a', new Note('sounds/waves/a.mp3', 2000), 65);
+//        instrument.add('b', new Note('sounds/waves/b.mp3', 2000), 66);
+        
+        var context = new WAContext();
+//        instrument.add('barrel1', new WANote('sounds/drums/Big%20Drum%20Kick.mp3'), 67);
+//        instrument.add('hit1', new WANote('sounds/drums/Clean%20Snare%20Hit.mp3'), 68);
+//        instrument.add('tom1', new WANote('sounds/drums/808%20High%20Tom%202.mp3'), 69);
+        
+        instrument.add('c', new WANote('sounds/piano/c1.wav.mp3', 2000), 65);
+        instrument.add('cs', new WANote('sounds/piano/cs1.wav.mp3', 2000), 87);
+        instrument.add('d', new WANote('sounds/piano/d1.wav.mp3', 2000), 83);
+        instrument.add('ds', new WANote('sounds/piano/ds1.wav.mp3', 2000), 69);
+        instrument.add('e', new WANote('sounds/piano/e1.wav.mp3', 2000), 68);
+        instrument.add('f', new WANote('sounds/piano/f1.wav.mp3', 2000), 70);
+        instrument.add('fs', new WANote('sounds/piano/fs1.wav.mp3', 2000), 84);
+        instrument.add('g', new WANote('sounds/piano/g1.wav.mp3', 2000), 71);
+        instrument.add('gs', new WANote('sounds/piano/gs1.wav.mp3', 2000), 89);
+        instrument.add('a', new WANote('sounds/piano/a1.wav.mp3', 2000), 72);
+        instrument.add('as', new WANote('sounds/piano/as1.wav.mp3', 2000), 85);
+        instrument.add('b', new WANote('sounds/piano/b1.wav.mp3', 2000), 74);
+        instrument.add('c1', new WANote('sounds/piano/c2.wav.mp3', 2000), 75);
+      }
+    
+    // -->
+    </script>
+    <title>Sampler</title>  
+  </head>  
+  <body>    
+    <input type="button" onclick="timer.pause();" value="Pause" /> <br />
+    <div id="container">Loading</div>
+  </body>
+</html>
