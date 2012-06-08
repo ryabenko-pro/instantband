@@ -10,7 +10,7 @@
   <script type="text/javascript" src="js/external/dsp.js"></script>
   <style type="text/css">
     DIV.chain {
-      height: 100px;
+      height: 150px;
       border: 1px dotted gray;
       margin: 20px;
     }
@@ -54,6 +54,19 @@
       'saw': DSP.SAW,
       'triangle': DSP.TRIANGLE
     };
+    
+    var biquad = [
+      'LOWPASS', 
+      'HIGHPASS',
+      'BANDPASS',
+      'LOWSHELF',
+      'HIGHSHELF',
+      'PEAKING',
+      'NOTCH',
+      'ALLPASS'
+    ];
+    
+    
     const SAMPLE_RATE = 44100;
     const NUM_SAMPLES = 65536;
     const NUM_CHANNELS = 2;
@@ -269,6 +282,61 @@
     }
     
     
+    function NodeBiquad() {
+      
+      
+      this.render = function(container) {
+        var select = $('<select>');
+        for (var t in biquad) {
+          select.append($('<option value="' + t + '">' + biquad[t] + '</option>'));
+        }
+        select.change(this.onTypeChanged.bind(this));
+        this.select = select;
+        container.append($('<h3>Biquad</h3>'), select, $('<br />')); 
+        
+        var controller = $('<input type="text" value="0" />'); 
+        controller.change(this.onValueChanged.bind(this));
+        this.controller = controller;
+        
+        container.append(controller);
+      };
+      
+      this.onTypeChanged = function() {
+        if (this.node) {
+          this.node.type = this.getType();
+        }
+      }
+
+      this.onValueChanged = function() {
+        if (this.node) {
+          this.node.frequency.value = this.getValue();
+        }
+      }
+      
+      this.getValue = function() {
+        return parseFloat(this.controller.val());
+      }
+
+      this.getType = function() {
+        return parseInt(this.select.val());
+      }
+      
+      this.connectTo = function(context, destination) {
+        this.node = context.context.createBiquadFilter();
+        this.node.frequency.value = this.getValue();
+        
+        this.node.Q.value = 0;
+        this.node.gain.value = 0;
+        
+        this.node.connect(destination);
+      }
+      
+      this.getConnector = function() {
+        return this.node;
+      }
+    }
+    
+    
     function NodeWaveShaperNew() {
       this.nSamples = 2048;
       this.wsCurve = new Float32Array(this.nSamples);
@@ -409,6 +477,13 @@
       btnNode.click(function(chain) {
         return function () {
           chain.addNode(new NodeWaveShaperNew());
+        }
+      }(this));
+      container.append(btnNode);
+      btnNode = $('<input type="button" class="btn-node" value="Add Biquad" />');
+      btnNode.click(function(chain) {
+        return function () {
+          chain.addNode(new NodeBiquad());
         }
       }(this));
       container.append(btnNode);
