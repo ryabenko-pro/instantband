@@ -154,6 +154,7 @@
     
     
     
+    
     function SourceNodeOscillator() {
       this.buffer = null;
       
@@ -255,17 +256,62 @@
         return parseFloat(this.controller.val());
       }
       
-      this.connect = function(context, source, destination) {
+      this.connectTo = function(context, destination) {
         this.gainNode = context.context.createGainNode();
         this.gain = this.getValue();
         this.gainNode.gain.value = this.gain;
         this.gainNode.connect(destination);
-        if (source)
-          source.connect(this.gainNode);
       }
       
       this.getConnector = function() {
         return this.gainNode;
+      }
+    }
+    
+    
+    function NodeWaveShaperNew() {
+      this.nSamples = 2048;
+      this.wsCurve = new Float32Array(this.nSamples);
+      
+      this.createCurve = function() {
+        var amount = this.amount.val();
+        var n_samples = this.nSamples;
+        
+        wsCurve = new Float32Array(this.nSamples);
+        
+        if ((amount >= 0) && (amount < 1)) {
+          var k = 2 * amount / (1 - amount);
+          var x = null;
+          for (var i = 0; i < n_samples; i+=1) {
+              x = (i - 0) * (1 - (-1)) / (n_samples - 0) + (-1);
+              wsCurve[i] = (1 + k) * x / (1+ k * Math.abs(x));
+          }
+        }
+        
+        return wsCurve;
+      }
+      
+      this.onChangeAmount = function() {
+        if (this.shaper) {
+            this.shaper.curve = this.createCurve();
+        }
+      }
+      
+      this.render = function(container) {
+        var amount = $('<input type="amount" value="0" />');
+        amount.change(this.onChangeAmount.bind(this));
+        this.amount = amount;
+        container.append(amount);
+      };
+      
+      this.connectTo = function(context, destination) {
+        this.shaper = context.context.createWaveShaper();
+        this.shaper.curve = this.createCurve();
+        this.shaper.connect(destination);
+      }
+      
+      this.getConnector = function() {
+        return this.shaper;
       }
     }
     
@@ -302,11 +348,11 @@
       if (!this.source)
         return;
       
-      var src = this.source;
       var dest = this.context.getDestination(), node = null;
-      for (var n in this.nodes) {
+      var nodes = this.nodes.reverse();
+      for (var n in nodes) {
         node = this.nodes[n];
-        node.connect(this.context, src.source, dest);
+        node.connectTo(this.context, dest);
         dest = node.getConnector();
       }
       
@@ -333,23 +379,36 @@
       var sourceContainer = $('<span class="chain-source" />');
       this.sourceContainer = sourceContainer;
       
-      var btnSource = $('<input type="button" class="btn-source" value="Set source" />');
-      var btnNode = $('<input type="button" class="btn-node" value="Add node" />');
+      var btnSource = $('<input type="button" class="btn-source" value="Set audio" />');
       btnSource.click(function(chain) {
         return function () {
-          selectSourceNode(function(source) {
-            chain.setSource(source);
-          });
+          chain.setSource(new SourceNode(buffers));
         }        
       }(this));
+      container.append(btnSource);
+      btnSource = $('<input type="button" class="btn-source" value="Set Oscillate" />');
+      btnSource.click(function(chain) {
+        return function () {
+          chain.setSource(new SourceNodeOscillator());
+        }        
+      }(this));
+      container.append(btnSource);
+      
+      container.append(sourceContainer);
+
+      var btnNode = $('<input type="button" class="btn-node" value="Add Gain" />');
       btnNode.click(function(chain) {
         return function () {
-          chain.addNode(new NodeGain("0.5"));
+          chain.addNode(new NodeGain("1.0"));
         }
       }(this));
-      
-      container.append(btnSource);
-      container.append(sourceContainer);
+      container.append(btnNode);
+      btnNode = $('<input type="button" class="btn-node" value="Add Shaper" />');
+      btnNode.click(function(chain) {
+        return function () {
+          chain.addNode(new NodeWaveShaperNew());
+        }
+      }(this));
       container.append(btnNode);
       
       return container;

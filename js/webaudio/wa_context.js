@@ -14,7 +14,7 @@ function WAContext() {
 WAContext.prototype.playBuffer = function(buffer) {
   var source = this.context.createBufferSource();
   source.buffer = buffer;
-  source.connect(this.context.destination);
+  // source.connect(this.context.destination);
   source.noteOn(0);
   
   return source;
@@ -23,7 +23,7 @@ WAContext.prototype.playBuffer = function(buffer) {
 WAContext.prototype.createBufferSource = function() {
   var source = this.context.createBufferSource();
   source.buffer = this.context.createBuffer(NUM_CHANNELS, NUM_SAMPLES, SAMPLE_RATE);
-  source.connect(this.context.destination);
+  // source.connect(this.context.destination);
   return source;
 }
 
