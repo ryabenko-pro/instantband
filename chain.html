@@ -242,7 +242,7 @@
         controller.change(this.onGainChanged.bind(this));
         this.controller = controller;
         
-        container.append(controller, $(' - Gain'));
+        container.append($('<h3>Gain</h3>'), controller);
       };
       
       this.onGainChanged = function() {
@@ -301,7 +301,7 @@
         var amount = $('<input type="amount" value="0" />');
         amount.change(this.onChangeAmount.bind(this));
         this.amount = amount;
-        container.append(amount);
+        container.append($('<h3>Wave shaper</h3>'), amount);
       };
       
       this.connectTo = function(context, destination) {
@@ -327,7 +327,9 @@
     
     Chain.prototype.addNode = function(node) {
       this.nodes.push(node);
-      node.render(this.container);
+      var nodeContainer = $('<span class="node" />');
+      node.render(nodeContainer);
+      this.container.append(nodeContainer);
     }
 
     Chain.prototype.getSource = function() {
