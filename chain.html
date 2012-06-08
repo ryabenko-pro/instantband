@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="generator" content="PSPad editor, www.pspad.com">
+  <title>WebAudio Chain Factory</title>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
+  
+  <script type="text/javascript" src="js/webaudio/wa_context.js"></script>
+  <style type="text/css">
+    DIV.chain {
+      height: 100px;
+      border: 1px dotted gray;
+      margin: 20px;
+    }
+    
+    .chain .node, .chain-source {
+      float: left;
+      height: 100%;
+      border: 1px dotted gray;
+      margin: 2px;
+    }
+    
+    .controlls {
+      float: left;
+      height: 100%;
+    }
+    
+    DIV.chain INPUT.btn-source {
+      float: left;
+      position: relative;
+      height: 100%;
+    }
+    
+    DIV.chain INPUT.btn-node {
+      float: right;
+      position: relative;
+      height: 100%;
+    }
+  </style>
+  
+  <script type="text/javascript">
+    
+    var urls = {
+      'Human voice': 'sounds/human-voice.mp4',
+      'melody': 'sounds/melody.mp3'
+    };
+    
+    var buffers = {};
+    var context = null;
+    
+    $(document).ready(function() {
+      context = new WAContext();
+      for (var u in urls) {
+        context.loadBuffer(urls[u], function(name) {
+          return function(buffer) {
+            buffers[name] = buffer;
+          }
+        }(u));
+      }
+    });
+    
+    function selectSourceNode(callback) {
+      callback(new SourceNode(buffers));
+    }
+    
+    
+    function Node(name) {
+      this.name = name;
+    }
+    
+    Node.prototype.render = function(container) {
+      container.append($('<span class="node">' + this.name + '</span>'));
+    }
+    
+    
+    function SourceNode(buffers) {
+      this.buffers = buffers;
+      
+      this.setPlayingSource = function(source) {
+        this.source = source;
+      };
+      
+      this.render = function(container) {
+        var select = $('<select>');
+        select.append($('<option value="0">None</option>'));
+        for (var u in this.buffers) {
+          select.append($('<option value="' + u + '">' + u + '</option>'));
+        }
+        
+        select.change(this.onBufferChanged.bind(this));
+        
+        container.append(select);
+        this.select = select;
+      };
+      
+      this.onBufferChanged = function() {
+        if (0 == this.select.val()) {
+          this.source.noteOff(0);
+          return;
+        }
+        
+        if (this.source) {
+          this.source.buffer = this.buffers[this.select.val()];
+          this.source.noteOn(0);
+        }
+      }
+      
+      this.getBuffer = function() {
+        if (0 == this.select.val())
+          return null;
+          
+        return this.buffers[this.select.val()];
+      }
+    }
+    
+    
+    
+    
+    
+    
+    function Chain(context) {
+      this.context = context;
+      this.nodes = [];
+      this.container = this.render();
+      this.source = null;
+    }
+    
+    Chain.prototype.addNode = function(node) {
+      this.nodes.push(node);
+      node.render(this.container);
+    }
+
+    Chain.prototype.getSource = function() {
+      return this.source;
+    }
+
+    Chain.prototype.setSource = function(source) {
+      this.source = source;
+      this.sourceContainer.html('');
+      var node = $('<span class="source-node" />');
+      source.render(node);
+      this.sourceContainer.append(node);
+    }
+    
+    Chain.prototype.render = function() {
+      var container = $('<div class="chain" />');
+      var controlls = $('<span class="controlls" />');
+      var btnPlay = $('<input type="button" value="Play" />');
+      btnPlay.click(this.play.bind(this));
+      var btnStop = $('<input type="button" value="Stop" />');
+      btnStop.click(this.stop.bind(this));
+      controlls.append(btnPlay, $('<br>'), btnStop); 
+      container.append(controlls);
+      
+      var sourceContainer = $('<span class="chain-source" />');
+      this.sourceContainer = sourceContainer;
+      
+      var btnSource = $('<input type="button" class="btn-source" value="Set source" />');
+      var btnNode = $('<input type="button" class="btn-node" value="Add node" />');
+      btnSource.click(function(chain) {
+        return function () {
+          selectSourceNode(function(source) {
+            chain.setSource(source);
+          });
+        }        
+      }(this));
+      btnNode.click(function(chain) {
+        return function () {
+          chain.addNode(new Node("node"));
+        }
+      }(this));
+      
+      container.append(btnSource);
+      container.append(sourceContainer);
+      container.append(btnNode);
+      
+      return container;
+    }
+    
+    Chain.prototype.play = function() {
+      this.stop();
+      
+      if (!this.source || null == this.source.getBuffer())
+        return;
+      
+      this.playingSource = this.context.playBuffer(this.source.getBuffer());
+      this.source.setPlayingSource(this.playingSource);
+    }
+    
+    Chain.prototype.stop = function() {
+      if (!this.playingSource)
+        return;
+        
+      this.playingSource.noteOff(0);
+      this.playingSource = null;
+      this.source.setPlayingSource(null);
+    }
+    
+    
+    
+    var chains = [];
+    function addChain() {
+      var chain = new Chain(context);
+      chains.push(chain);
+      $('#chain-container').append(chain.container);
+    }
+    
+    function play() {
+      var chain = null;
+      for (var c in chains) {
+        chain = chains[c];
+        chain.play();
+      }
+    } 
+    
+    function stop() {
+      var chain = null;
+      for (var c in chains) {
+        chain = chains[c];
+        chain.stop();
+      }
+    } 
+    
+  </script>
+  </head>
+  <body>
+    <input type="button" value="Play all" onclick="play();"/> 
+    <input type="button" value="Stop all" onclick="stop();"/> 
+    <br />
+    <div id="chain-container">
+    
+    </div>
+    <input type="button" value="add chain" onclick="addChain();" />
+  </body>
+</html>
