@@ -7,6 +7,7 @@
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
   
   <script type="text/javascript" src="js/webaudio/wa_context.js"></script>
+  <script type="text/javascript" src="js/external/dsp.js"></script>
   <style type="text/css">
     DIV.chain {
       height: 100px;
@@ -43,8 +44,20 @@
     
     var urls = {
       'Human voice': 'sounds/human-voice.mp4',
-      'melody': 'sounds/melody.mp3'
+      'melody': 'sounds/melody.mp3',
+      'note': 'sounds/piano/a1.wav.mp3'
     };
+    
+    var types = {
+      'sine': DSP.SINE,
+      'square': DSP.SQUARE,
+      'saw': DSP.SAW,
+      'triangle': DSP.TRIANGLE
+    };
+    const SAMPLE_RATE = 44100;
+    const NUM_SAMPLES = 65536;
+    const NUM_CHANNELS = 2;
+    
     
     var buffers = {};
     var context = null;
@@ -61,7 +74,8 @@
     });
     
     function selectSourceNode(callback) {
-      callback(new SourceNode(buffers));
+      // callback(new SourceNode(buffers));
+      callback(new SourceNodeOscillator());
     }
     
     
@@ -77,10 +91,6 @@
     function SourceNode(buffers) {
       this.buffers = buffers;
       
-      this.setPlayingSource = function(source) {
-        this.source = source;
-      };
-      
       this.render = function(container) {
         var select = $('<select>');
         select.append($('<option value="0">None</option>'));
@@ -91,8 +101,25 @@
         select.change(this.onBufferChanged.bind(this));
         
         container.append(select);
+        
+        var id = 'source' + Math.random();
+        var looping = $('<input type="checkbox" id="' + id + '"/>'); 
+        looping.click(this.loopChanged.bind(this));
+        container.append(select, $('<br>'), looping, $(' - <label for="' + id + '">Loop</label>'));
+        
         this.select = select;
+        this.looping = looping;
       };
+      
+      this.isLoop = function() {
+        return this.looping.attr('checked') ? true : false;
+      };
+      
+      this.loopChanged = function() {
+        if (this.source) {
+          this.source.looping = this.isLoop(); 
+        }
+      }
       
       this.onBufferChanged = function() {
         if (0 == this.select.val()) {
@@ -106,15 +133,141 @@
         }
       }
       
-      this.getBuffer = function() {
+      this.stop = function() {
+        if (!this.source)
+          return;
+          
+        this.source.noteOff(0); 
+        this.source = null;
+      };
+      
+      this.play = function(context, destination) {
         if (0 == this.select.val())
           return null;
           
-        return this.buffers[this.select.val()];
+        this.source = context.playBuffer(this.buffers[this.select.val()]);
+        this.source.connect(destination);
+        this.source.looping = this.isLoop();
       }
     }
     
     
+    
+    
+    function SourceNodeOscillator() {
+      this.buffer = null;
+      
+      this.render = function(container) {
+        var select = $('<select>');
+        select.append($('<option value="0">None</option>'));
+        for (var t in types) {
+          select.append($('<option value="' + t + '">' + t + '</option>'));
+        }
+        select.change(this.onTypeChanged.bind(this));
+        
+        var id = Math.random();
+        var looping = $('<input type="checkbox" id="' + id + '"/>'); 
+        looping.click(this.loopChanged.bind(this));
+        container.append(select, $('<br>'), looping, $(' - <label for="' + id + '">Loop</label>'));
+        this.select = select;
+        this.looping = looping;
+      };
+      
+      this.isLoop = function() {
+        return this.looping.attr('checked') ? true : false;
+      };
+      
+      this.loopChanged = function() {
+        if (this.source) {
+          this.source.looping = this.isLoop(); 
+        }
+      }
+      
+      this.onTypeChanged = function() {
+        if (0 == this.select.val()) {
+          this.source.noteOff(0);
+          return;
+        }
+        
+        if (this.source) {
+          var osc = new Oscillator(types[this.select.val()], 440, 0.5, NUM_SAMPLES, SAMPLE_RATE);
+          osc.generate();
+          this.source.buffer.getChannelData(0).set(osc.signal);
+          this.source.buffer.getChannelData(1).set(osc.signal);
+          this.source.noteOn(0);
+        }
+      };
+      
+      this.stop = function() {
+        if (!this.source)
+          return;
+          
+        this.source.noteOff(0); 
+        this.source = null;
+      };
+      
+      this.play = function(context, destination) {
+        if (0 == this.select.val())
+          return null;
+          
+        if (this.source)
+          this.source.noteOff(0);
+        
+        this.source = context.createBufferSource();
+        this.source.looping = this.isLoop();
+                   
+        var osc = new Oscillator(types[this.select.val()], 440, 1, NUM_SAMPLES, SAMPLE_RATE);
+        osc.generate();
+        this.source.connect(destination);
+        this.source.buffer.getChannelData(0).set(osc.signal);
+        this.source.buffer.getChannelData(1).set(osc.signal);
+        this.source.noteOn(0);
+      }
+      
+      this.connect = function(destination) {
+        this.source.connect(destination);
+      }
+    } 
+    
+    
+    
+    
+    
+    function NodeGain(gain) {
+      this.gain = gain ? gain : '1.0';
+      
+      this.render = function(container) {
+        var controller = $('<input type="text" value="' + this.gain + '" />'); 
+        controller.change(this.onGainChanged.bind(this));
+        this.controller = controller;
+        
+        container.append(controller, $(' - Gain'));
+      };
+      
+      this.onGainChanged = function() {
+        this.gain = this.getValue();
+        if (this.gainNode) {
+          this.gainNode.gain.value = this.gain;
+        }
+      }
+      
+      this.getValue = function() {
+        return parseFloat(this.controller.val());
+      }
+      
+      this.connect = function(context, source, destination) {
+        this.gainNode = context.context.createGainNode();
+        this.gain = this.getValue();
+        this.gainNode.gain.value = this.gain;
+        this.gainNode.connect(destination);
+        if (source)
+          source.connect(this.gainNode);
+      }
+      
+      this.getConnector = function() {
+        return this.gainNode;
+      }
+    }
     
     
     
@@ -143,6 +296,30 @@
       this.sourceContainer.append(node);
     }
     
+    Chain.prototype.play = function() {
+      this.stop();
+      
+      if (!this.source)
+        return;
+      
+      var src = this.source;
+      var dest = this.context.getDestination(), node = null;
+      for (var n in this.nodes) {
+        node = this.nodes[n];
+        node.connect(this.context, src.source, dest);
+        dest = node.getConnector();
+      }
+      
+      this.source.play(this.context, dest);
+    }
+    
+    Chain.prototype.stop = function() {
+      if (!this.source)
+        return;
+      
+      this.source.stop();
+    }
+        
     Chain.prototype.render = function() {
       var container = $('<div class="chain" />');
       var controlls = $('<span class="controlls" />');
@@ -167,7 +344,7 @@
       }(this));
       btnNode.click(function(chain) {
         return function () {
-          chain.addNode(new Node("node"));
+          chain.addNode(new NodeGain("0.5"));
         }
       }(this));
       
@@ -178,24 +355,6 @@
       return container;
     }
     
-    Chain.prototype.play = function() {
-      this.stop();
-      
-      if (!this.source || null == this.source.getBuffer())
-        return;
-      
-      this.playingSource = this.context.playBuffer(this.source.getBuffer());
-      this.source.setPlayingSource(this.playingSource);
-    }
-    
-    Chain.prototype.stop = function() {
-      if (!this.playingSource)
-        return;
-        
-      this.playingSource.noteOff(0);
-      this.playingSource = null;
-      this.source.setPlayingSource(null);
-    }
     
     
     
@@ -232,5 +391,9 @@
     
     </div>
     <input type="button" value="add chain" onclick="addChain();" />
+    
+    <div id="source-choose">
+      
+    </div>
   </body>
 </html>

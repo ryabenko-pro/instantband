@@ -20,6 +20,19 @@ WAContext.prototype.playBuffer = function(buffer) {
   return source;
 }
 
+WAContext.prototype.createBufferSource = function() {
+  var source = this.context.createBufferSource();
+  source.buffer = this.context.createBuffer(NUM_CHANNELS, NUM_SAMPLES, SAMPLE_RATE);
+  source.connect(this.context.destination);
+  return source;
+}
+
+WAContext.prototype.getDestination = function() {
+  return this.context.destination;
+}
+
+
+
 WAContext.prototype.init = function() {
   this.loader = document.createElement('DIV');
   this.loader.style.position = 'fixed';
