@@ -9,6 +9,19 @@
   <script type="text/javascript" src="js/webaudio/wa_context.js"></script>
   <script type="text/javascript" src="js/external/dsp.js"></script>
   <style type="text/css">
+    BODY {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;    
+    }
+    
+    INPUT[type=text] {
+      width: 50px;
+    }
+  
     DIV.chain {
       height: 150px;
       border: 1px dotted gray;
@@ -17,9 +30,11 @@
     
     .chain .node, .chain-source {
       float: left;
-      height: 100%;
+      height: 89%;
       border: 1px dotted gray;
       margin: 2px;
+      width: 120px;
+      padding: 5px;
     }
     
     .controlls {
@@ -366,7 +381,7 @@
       }
       
       this.render = function(container) {
-        var amount = $('<input type="amount" value="0" />');
+        var amount = $('<input type="text" value="0" />');
         amount.change(this.onChangeAmount.bind(this));
         this.amount = amount;
         container.append($('<h3>Wave shaper</h3>'), amount);
